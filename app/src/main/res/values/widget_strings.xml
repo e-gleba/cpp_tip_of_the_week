@@ -1,0 +1,8 @@
+<resources>
+    <string name="widget_label">C++ Daily Tip</string>
+    <string name="widget_description">A saved C++ tip. Tap to read the full tip in the app.</string>
+    <string name="widget_empty">Open the app to load your tips</string>
+    <string name="widget_open_tip">Tap to read</string>
+    <string name="widget_tip_number">#%1$d</string>
+    <string name="tip_numbering_note">Tip numbering follows the original collection, which starts at #182. Earlier tips were not converted to Markdown.</string>
+</resources>

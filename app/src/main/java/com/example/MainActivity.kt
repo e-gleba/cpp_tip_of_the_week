@@ -83,9 +83,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleWidgetIntent(intent: Intent) {
+        if (intent.getBooleanExtra("widget_route_handled", false)) return
         val tipId = TipWidgetProvider.tipIdFromIntent(intent) ?: return
-        // Consume the route so Android activity recreation does not replay an old tap.
-        intent.data = null
+        // AndroidX ActivityScenario matches lifecycle events using Intent.filterEquals.
+        // Keep the URI intact; extras do not affect that match or replay on recreation.
+        intent.putExtra("widget_route_handled", true)
         widgetNavigationJob?.cancel()
         widgetNavigationJob = lifecycleScope.launch {
             // Reuse the ViewModel's existing load rather than parsing assets a second time.

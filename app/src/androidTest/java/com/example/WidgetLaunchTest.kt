@@ -10,6 +10,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.widget.TipWidgetProvider
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,9 +27,13 @@ class WidgetLaunchTest {
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
             awaitTip(182)
             scenario.onActivity { activity ->
+                assertEquals("cpptotw://tip/182", activity.intent.dataString)
                 activity.startActivity(TipWidgetProvider.tipIntent(activity, 376))
             }
             awaitTip(376)
+            scenario.onActivity { activity ->
+                assertEquals("cpptotw://tip/376", activity.intent.dataString)
+            }
         }
     }
 

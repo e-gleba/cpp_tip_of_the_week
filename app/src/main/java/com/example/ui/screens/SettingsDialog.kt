@@ -42,10 +42,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.AppThemeMode
 import com.example.ui.viewmodel.CppTipUiState
 
@@ -253,6 +255,12 @@ fun SettingsDialog(
                         Text("Visit Website", fontSize = 12.sp)
                     }
                 }
+                Text(
+                    text = stringResource(R.string.tip_numbering_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.testTag("tip_numbering_note")
+                )
             }
         },
         confirmButton = {

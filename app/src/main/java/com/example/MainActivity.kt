@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,14 +42,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.example.ui.screens.DetailScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.SettingsDialog
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.viewmodel.CppTipViewModel
+import com.example.widget.TipWidgetProvider
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : ComponentActivity() {
     private val viewModel: CppTipViewModel by viewModels()
+    private var widgetNavigationJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +69,32 @@ class MainActivity : ComponentActivity() {
                 CppTotwApp(viewModel = viewModel)
             }
         }
+        handleWidgetIntent(intent)
+        lifecycleScope.launch {
+            viewModel.uiState.first { it.allTips.isNotEmpty() }
+            TipWidgetProvider.updateAll(this@MainActivity)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetIntent(intent)
+    }
+
+    private fun handleWidgetIntent(intent: Intent) {
+        val tipId = TipWidgetProvider.tipIdFromIntent(intent) ?: return
+        // Consume the route so Android activity recreation does not replay an old tap.
+        intent.data = null
+        widgetNavigationJob?.cancel()
+        widgetNavigationJob = lifecycleScope.launch {
+            // Reuse the ViewModel's existing load rather than parsing assets a second time.
+            val tip = withTimeoutOrNull(10_000L) {
+                viewModel.uiState.map { state -> state.allTips.firstOrNull { it.id == tipId } }
+                    .filterNotNull().first()
+            } ?: return@launch
+            viewModel.onSelectTip(tip)
+        }
     }
 }
 
@@ -68,6 +104,10 @@ fun CppTotwApp(viewModel: CppTipViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showSettings by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.selectedTip?.id) {
+        if (uiState.selectedTip != null) showSettings = false
+    }
 
     LaunchedEffect(uiState.statusMessage) {
         uiState.statusMessage?.let { msg ->

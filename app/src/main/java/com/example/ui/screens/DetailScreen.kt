@@ -4,12 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,23 +17,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,10 +42,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,6 +57,9 @@ import com.example.data.model.CppTip
 import com.example.ui.components.CategoryBadge
 import com.example.ui.components.CppSyntaxCodeBlock
 import com.example.ui.components.StandardBadge
+import com.example.ui.components.TipMarkdownBlock
+import com.example.ui.components.TipMarkdownParser
+import com.example.ui.components.markdownChildren
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,8 +76,10 @@ fun DetailScreen(
 ) {
     BackHandler { onBack() }
     val context = LocalContext.current
-
-    var showPuzzleSolution by remember(tip.id) { mutableStateOf(false) }
+    val source = tip.content.ifBlank { tip.summary }
+    val markdownBlocks = remember(source) { TipMarkdownParser.parse(source).markdownChildren() }
+    val listState = rememberLazyListState()
+    LaunchedEffect(tip.id) { listState.scrollToItem(0) }
 
     val currentIndex = allTips.indexOfFirst { it.id == tip.id }
     val prevTip = if (currentIndex > 0) allTips[currentIndex - 1] else null
@@ -147,6 +142,7 @@ fun DetailScreen(
         }
     ) { innerPadding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -154,7 +150,6 @@ fun DetailScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Badges Row
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -166,20 +161,18 @@ fun DetailScreen(
                 }
             }
 
-            // Title
-            item {
-                Text(
-                    text = tip.title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 20.sp,
-                        lineHeight = 26.sp
+            if (tip.content.isBlank()) {
+                item {
+                    Text(
+                        text = tip.title,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     )
-                )
+                }
             }
 
-            // If not downloaded yet: show download prompt
             if (!tip.isDownloaded) {
                 item {
                     Surface(
@@ -201,7 +194,7 @@ fun DetailScreen(
                                     )
                                 )
                                 Text(
-                                    text = "Download now to read offline anytime.",
+                                    text = "Download the complete article.",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -235,159 +228,31 @@ fun DetailScreen(
                 }
             }
 
-            // Summary
-            item {
-                Text(
-                    text = tip.summary,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 21.sp
-                    )
-                )
-            }
-
-            // C++ Code Snippet (IDE code block)
-            item {
-                CppSyntaxCodeBlock(
-                    code = tip.codeExample,
-                    title = "Tip #${tip.id} Code"
-                )
-            }
-
-            // Explanation / Content
-            if (tip.content.isNotBlank() && tip.content != tip.summary) {
-                item {
-                    Text(
-                        text = tip.content,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
-                            lineHeight = 22.sp
-                        )
-                    )
+            // Render the source once. Extracted preview/puzzle fields are not additional
+            // article sections and must not duplicate or replace the source solutions.
+            itemsIndexed(markdownBlocks, key = { index, _ -> "markdown_${tip.id}_$index" }) { index, block ->
+                Box(Modifier.fillMaxWidth().testTag("tip_markdown_$index")) {
+                    TipMarkdownBlock(block)
                 }
             }
 
-            // Puzzle Section (if available)
-            if (tip.puzzleSnippet != null) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "CODE PUZZLE",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-                            CppSyntaxCodeBlock(
-                                code = tip.puzzleSnippet,
-                                title = "Puzzle"
-                            )
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            OutlinedButton(
-                                onClick = { showPuzzleSolution = !showPuzzleSolution },
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = if (showPuzzleSolution) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    if (showPuzzleSolution) "Hide Solution" else "Show Solution",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            AnimatedVisibility(
-                                visible = showPuzzleSolution,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                Column(modifier = Modifier.padding(top = 8.dp)) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceVariant,
-                                        shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = tip.puzzleAnswer ?: "See Godbolt compiler checks.",
-                                            style = MaterialTheme.typography.bodySmall.copy(
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                lineHeight = 18.sp
-                                            ),
-                                            modifier = Modifier.padding(10.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            if (tip.content.isBlank() && tip.codeExample.isNotBlank()) {
+                item { CppSyntaxCodeBlock(code = tip.codeExample) }
             }
 
-            // Quick Links
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                OutlinedButton(
+                    onClick = { openUrl(context, tip.githubUrl) },
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    if (tip.godboltUrl != null) {
-                        OutlinedButton(
-                            onClick = { openUrl(context, tip.godboltUrl) },
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Code,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Godbolt CE", fontSize = 11.sp)
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = { openUrl(context, tip.githubUrl) },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("GitHub Tip", fontSize = 11.sp)
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("GitHub Tip", fontSize = 11.sp)
                 }
             }
 

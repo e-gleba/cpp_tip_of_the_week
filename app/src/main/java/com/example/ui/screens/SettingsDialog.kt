@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,7 +81,7 @@ fun SettingsDialog(
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Section: Theme (Appearance)
@@ -124,10 +126,10 @@ fun SettingsDialog(
                     )
                 }
 
-                // Section: Offline Storage & Update Check
+                // Section: Tips and sync
                 Column {
                     Text(
-                        text = "TIPS & OFFLINE SYNC",
+                        text = "TIPS & SYNC",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
@@ -153,7 +155,7 @@ fun SettingsDialog(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
-                                        text = "${uiState.downloadedCount} of ${uiState.totalCount} tips saved offline",
+                                        text = "${uiState.downloadedCount} of ${uiState.totalCount} tips stored on this device",
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -186,7 +188,7 @@ fun SettingsDialog(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        uiState.syncProgressText ?: "Syncing...",
+                                        "Syncing...",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -199,6 +201,15 @@ fun SettingsDialog(
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("Sync", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                 }
+                            }
+                            val syncMessage = if (uiState.isSyncing) uiState.syncProgressText else uiState.statusMessage
+                            if (syncMessage != null) {
+                                Text(
+                                    text = syncMessage,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (uiState.isErrorMessage) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 8.dp).testTag("settings_sync_status")
+                                )
                             }
                         }
                     }

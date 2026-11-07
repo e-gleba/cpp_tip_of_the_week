@@ -4,11 +4,8 @@
     android:minHeight="110dp"
     android:minResizeWidth="180dp"
     android:minResizeHeight="110dp"
-    android:targetCellWidth="3"
-    android:targetCellHeight="2"
     android:updatePeriodMillis="86400000"
     android:initialLayout="@layout/tip_widget"
-    android:previewLayout="@layout/tip_widget"
     android:description="@string/widget_description"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

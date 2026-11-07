@@ -22,7 +22,7 @@
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
             android:fontFamily="monospace"
-            android:text="C++"
+            android:text="@string/widget_cpp_badge"
             android:textColor="@color/widget_accent"
             android:textSize="12sp"
             android:textStyle="bold" />

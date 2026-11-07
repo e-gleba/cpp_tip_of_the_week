@@ -1,0 +1,6 @@
+{
+  "name": "C++ Tip of the Week",
+  "description": "Explore C++ Tips of the Week, browse random tips, search modern idioms, test code puzzles, and bookmark favorites with full offline and online support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

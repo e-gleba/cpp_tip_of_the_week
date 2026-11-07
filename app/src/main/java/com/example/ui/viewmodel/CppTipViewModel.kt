@@ -9,6 +9,7 @@ import com.example.data.model.CppTip
 import com.example.data.repository.CppTipRepository
 import com.example.ui.theme.AppThemeMode
 import com.example.util.NetworkMonitor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +24,7 @@ data class CppTipUiState(
     val selectedTip: CppTip? = null,
     val randomTip: CppTip? = null,
     val searchQuery: String = "",
-    val activeFilter: String = "All", // "All", "C++26", "C++23", "C++20", "C++17", "C++14/11", "Bookmarked", "Offline"
+    val activeFilter: String = "All", // "All", "C++26", "C++23", "C++20", "C++17", "C++14/11", "Bookmarked"
     val isOnline: Boolean = false,
     val isSyncing: Boolean = false,
     val syncProgressText: String? = null,
@@ -60,7 +61,7 @@ class CppTipViewModel(application: Application) : AndroidViewModel(application) 
             repository.initializeIfNeeded(application)
         }
 
-        // Observe network state & trigger fast archive sync when connected if needed
+        // Observe network state for on-demand tip downloads.
         viewModelScope.launch {
             networkMonitor.isOnline.collect { online ->
                 _uiState.update { it.copy(isOnline = online) }
@@ -117,7 +118,6 @@ class CppTipViewModel(application: Application) : AndroidViewModel(application) 
                 "C++17" -> tip.standard.equals("C++17", ignoreCase = true)
                 "C++14/11" -> tip.standard.equals("C++14", ignoreCase = true) || tip.standard.equals("C++11", ignoreCase = true)
                 "Bookmarked", "Saved" -> tip.isBookmarked
-                "Offline" -> tip.isDownloaded
                 else -> true
             }
 
@@ -223,7 +223,7 @@ class CppTipViewModel(application: Application) : AndroidViewModel(application) 
             // Step 2: Auto-download ALL un-downloaded tips sequentially for complete offline use
             repository.syncAllUndownloadedTips(delayMs = 80, maxItems = Int.MAX_VALUE) { current, total, tipId ->
                 _uiState.update {
-                    it.copy(syncProgressText = "Downloading tip #$tipId for offline ($current/$total)...")
+                    it.copy(syncProgressText = "Downloading tip #$tipId ($current/$total)...")
                 }
             }
 
@@ -237,9 +237,7 @@ class CppTipViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /**
-     * User-triggered "Sync" action from Settings.
-     * Uses fast single-archive download from GitHub repository (~200KB)
-     * with fallback to web catalog.
+     * User-triggered Sync from Settings downloads the full repository in one archive.
      */
     fun checkUpdatesAndResync() {
         if (syncJob?.isActive == true) return
@@ -248,30 +246,41 @@ class CppTipViewModel(application: Application) : AndroidViewModel(application) 
             _uiState.update {
                 it.copy(
                     isSyncing = true,
-                    syncProgressText = "Syncing with GitHub repository...",
+                    syncProgressText = "Downloading tips...",
+                    statusMessage = null,
                     isErrorMessage = false
                 )
             }
 
-            val archiveResult = repository.syncFullRepoArchive()
-            if (archiveResult.isSuccess) {
-                val count = archiveResult.getOrDefault(0)
+            try {
+                val result = repository.syncFullRepoArchive()
+                result.fold(
+                    onSuccess = { count ->
+                        _uiState.update {
+                            it.copy(statusMessage = "Sync complete. $count tips updated.")
+                        }
+                    },
+                    onFailure = { error ->
+                        if (error is CancellationException) throw error
+                        _uiState.update {
+                            it.copy(
+                                statusMessage = "Sync failed. Saved tips are still available. Try again.",
+                                isErrorMessage = true
+                            )
+                        }
+                    }
+                )
+            } catch (error: CancellationException) {
+                throw error
+            } catch (_: Exception) {
                 _uiState.update {
                     it.copy(
-                        isSyncing = false,
-                        syncProgressText = null,
-                        statusMessage = "Sync complete! $count tips are available offline."
+                        statusMessage = "Sync failed. Saved tips are still available. Try again.",
+                        isErrorMessage = true
                     )
                 }
-            } else {
-                val catalogResult = repository.syncCatalogFromWeb()
-                _uiState.update {
-                    it.copy(
-                        isSyncing = false,
-                        syncProgressText = null,
-                        statusMessage = if (catalogResult.isSuccess) "Sync complete! Tips are up to date." else "Offline mode active. All tips available from local cache."
-                    )
-                }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false, syncProgressText = null) }
             }
         }
     }

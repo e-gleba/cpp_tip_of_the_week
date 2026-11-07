@@ -8,8 +8,7 @@ import java.util.regex.Pattern
 
 object AssetTipLoader {
     /**
-     * Loads all pre-bundled C++ tips from assets/tips and assets/README.md.
-     * Guarantees 100% offline availability instantly on first launch.
+     * Loads bundled tips and catalog entries; missing files remain eligible for sync.
      */
     fun loadAllTipsFromAssets(context: Context): List<CppTip> {
         val assetManager = context.assets
@@ -85,8 +84,9 @@ object AssetTipLoader {
         }
 
         // 3. Fallback for tips listed in README if file was missing
+        val loadedIds = tips.mapTo(mutableSetOf()) { it.id }
         for ((id, title) in titleMap) {
-            if (!tips.any { it.id == id }) {
+            if (id !in loadedIds) {
                 tips.add(
                     CppTip(
                         id = id,
@@ -102,7 +102,7 @@ object AssetTipLoader {
                         githubUrl = "https://github.com/tip-of-the-week/cpp/blob/main/tips/$id.md",
                         isBookmarked = false,
                         isFeatured = false,
-                        isDownloaded = true
+                        isDownloaded = false
                     )
                 )
             }

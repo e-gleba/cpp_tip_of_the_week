@@ -1,8 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -25,9 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -35,7 +30,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -53,7 +47,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CppTip
-import com.example.ui.components.CategoryBadge
 import com.example.ui.components.StandardBadge
 import com.example.ui.viewmodel.CppTipUiState
 
@@ -66,7 +59,6 @@ fun HomeScreen(
     onBookmarkToggle: (CppTip) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Avoid saved star in filter section; start with standards, clean labels
     val filterOptions = listOf(
         "All",
         "C++26",
@@ -74,8 +66,7 @@ fun HomeScreen(
         "C++20",
         "C++17",
         "C++14/11",
-        "Bookmarked",
-        "Offline"
+        "Bookmarked"
     )
 
     Column(
@@ -83,32 +74,6 @@ fun HomeScreen(
             .fillMaxSize()
             .testTag("home_screen_column")
     ) {
-        // Subtle background sync progress bar with status text
-        AnimatedVisibility(
-            visible = uiState.isSyncing,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth().height(2.5.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-                if (uiState.syncProgressText != null) {
-                    Text(
-                        text = uiState.syncProgressText ?: "",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        }
-
         // Clean Search Bar (supports Light & Dark themes, JetBrains Mono font)
         OutlinedTextField(
             value = uiState.searchQuery,
@@ -156,7 +121,6 @@ fun HomeScreen(
             )
         )
 
-        // Single Clean Filter Row (no duplicate offline count below, clean labels)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -167,15 +131,11 @@ fun HomeScreen(
         ) {
             filterOptions.forEach { filter ->
                 val isSelected = uiState.activeFilter == filter
-                val label = when (filter) {
-                    "Offline" -> "Offline (${uiState.downloadedCount})"
-                    else -> filter
-                }
 
                 FilterChip(
                     selected = isSelected,
                     onClick = { onFilterSelected(filter) },
-                    label = { Text(label, fontSize = 11.5.sp) },
+                    label = { Text(filter, fontSize = 11.5.sp) },
                     shape = RoundedCornerShape(8.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -303,42 +263,6 @@ fun SimpleTipRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     StandardBadge(standard = tip.standard)
-
-                    if (tip.isDownloaded) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Offline ready",
-                                tint = Color(0xFF10B981),
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                text = "Offline",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color(0xFF10B981),
-                                    fontSize = 10.sp
-                                )
-                            )
-                        }
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDownload,
-                                contentDescription = "Available online",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                text = "Online",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    fontSize = 10.sp
-                                )
-                            )
-                        }
-                    }
                 }
             }
 

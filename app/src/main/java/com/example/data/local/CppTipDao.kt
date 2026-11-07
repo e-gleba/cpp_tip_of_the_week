@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.model.CppTip
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,29 @@ interface CppTipDao {
 
     @Query("SELECT * FROM cpp_tips WHERE isDownloaded = 0 ORDER BY id ASC")
     suspend fun getUndownloadedTips(): List<CppTip>
+
+    @Query("SELECT id FROM cpp_tips WHERE isDownloaded = 1")
+    suspend fun getDownloadedIds(): List<Int>
+
+    // Older asset imports incorrectly marked this exact placeholder as downloaded.
+    @Query("UPDATE cpp_tips SET isDownloaded = 0 WHERE isDownloaded = 1 AND codeExample LIKE '%// Full code is available online or via Sync.'")
+    suspend fun repairAssetPlaceholders()
+
+    @Transaction
+    suspend fun importBundledTips(tips: List<CppTip>) {
+        insertTipsIgnore(tips)
+        for (tip in tips) {
+            if (!tip.isDownloaded) continue
+            val existing = getTipByIdDirect(tip.id) ?: continue
+            if (!existing.isDownloaded) {
+                updateTip(tip.copy(
+                    isBookmarked = existing.isBookmarked,
+                    userNotes = existing.userNotes,
+                    isFeatured = existing.isFeatured
+                ))
+            }
+        }
+    }
 
     @Query("SELECT COUNT(*) FROM cpp_tips")
     suspend fun getCount(): Int

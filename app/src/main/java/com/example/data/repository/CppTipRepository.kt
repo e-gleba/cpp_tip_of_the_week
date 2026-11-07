@@ -17,15 +17,20 @@ class CppTipRepository(
     private val githubService: GithubTipService = GithubTipService()
 ) {
     suspend fun initializeIfNeeded(context: Context) = withContext(Dispatchers.IO) {
-        val count = dao.getCount()
-        if (count < 100) {
-            val assetTips = AssetTipLoader.loadAllTipsFromAssets(context)
-            if (assetTips.isNotEmpty()) {
-                dao.insertTips(assetTips)
-            } else {
-                val allSeedTips = CppTipSeedData.getAllSeedTips()
-                dao.insertTips(allSeedTips)
-            }
+        dao.repairAssetPlaceholders()
+        val bundledIds = context.assets.list("tips").orEmpty()
+            .filter { it.endsWith(".md") }
+            .mapNotNull { it.removeSuffix(".md").toIntOrNull() }
+        val downloadedIds = dao.getDownloadedIds().toSet()
+        if (bundledIds.isNotEmpty() && bundledIds.all { it in downloadedIds }) {
+            return@withContext
+        }
+
+        val assetTips = AssetTipLoader.loadAllTipsFromAssets(context)
+        if (assetTips.isNotEmpty()) {
+            dao.importBundledTips(assetTips)
+        } else if (dao.getCount() == 0) {
+            dao.insertTipsIgnore(CppTipSeedData.getAllSeedTips())
         }
     }
 

@@ -54,7 +54,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 class MainActivity : ComponentActivity() {
     private val viewModel: CppTipViewModel by viewModels()
@@ -85,17 +84,16 @@ class MainActivity : ComponentActivity() {
     private fun handleWidgetIntent(intent: Intent) {
         if (intent.getBooleanExtra("widget_route_handled", false)) return
         val tipId = TipWidgetProvider.tipIdFromIntent(intent) ?: return
-        // AndroidX ActivityScenario matches lifecycle events using Intent.filterEquals.
-        // Keep the URI intact; extras do not affect that match or replay on recreation.
-        intent.putExtra("widget_route_handled", true)
         widgetNavigationJob?.cancel()
         widgetNavigationJob = lifecycleScope.launch {
-            // Reuse the ViewModel's existing load rather than parsing assets a second time.
-            val tip = withTimeoutOrNull(10_000L) {
-                viewModel.uiState.map { state -> state.allTips.firstOrNull { it.id == tipId } }
-                    .filterNotNull().first()
-            } ?: return@launch
+            // Initial asset import can outlive an arbitrary timeout. Keep the tap pending;
+            // lifecycleScope or a newer widget tap cancels this wait when appropriate.
+            val tip = viewModel.uiState.map { state -> state.allTips.firstOrNull { it.id == tipId } }
+                .filterNotNull().first()
             viewModel.onSelectTip(tip)
+            // AndroidX ActivityScenario matches intents with filterEquals: preserve the URI.
+            // Consume the route only after navigation succeeds, not before loading finishes.
+            intent.putExtra("widget_route_handled", true)
         }
     }
 }

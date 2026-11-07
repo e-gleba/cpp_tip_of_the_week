@@ -7,12 +7,16 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.example.data.model.CppTip
+import com.example.data.model.WidgetTip
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CppTipDao {
     @Query("SELECT * FROM cpp_tips ORDER BY id ASC")
     fun getAllTips(): Flow<List<CppTip>>
+
+    @Query("SELECT id, title, standard FROM cpp_tips WHERE isDownloaded = 1 ORDER BY id ASC")
+    suspend fun getWidgetTips(): List<WidgetTip>
 
     @Query("SELECT * FROM cpp_tips WHERE isBookmarked = 1 ORDER BY id ASC")
     fun getBookmarkedTips(): Flow<List<CppTip>>

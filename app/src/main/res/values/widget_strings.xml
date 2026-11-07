@@ -1,4 +1,5 @@
 <resources>
+    <string name="widget_cpp_badge" translatable="false">C++</string>
     <string name="widget_label">C++ Daily Tip</string>
     <string name="widget_description">A saved C++ tip. Tap to read the full tip in the app.</string>
     <string name="widget_empty">Open the app to load your tips</string>

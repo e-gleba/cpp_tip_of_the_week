@@ -6,11 +6,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
+import androidx.core.net.toUri
 import com.example.MainActivity
 import com.example.R
 import com.example.data.local.CppDatabase
@@ -55,7 +55,7 @@ class TipWidgetProvider : AppWidgetProvider() {
     private fun render(context: Context, manager: AppWidgetManager, id: Int, tip: WidgetTip?) {
         val views = RemoteViews(context.packageName, R.layout.tip_widget)
         views.setTextViewText(R.id.widget_title, tip?.title ?: context.getString(R.string.widget_empty))
-        views.setTextViewText(R.id.widget_standard, tip?.standard ?: "C++")
+        views.setTextViewText(R.id.widget_standard, tip?.standard ?: context.getString(R.string.widget_cpp_badge))
         views.setTextViewText(R.id.widget_number, tip?.let { context.getString(R.string.widget_tip_number, it.id) } ?: "")
         views.setViewVisibility(R.id.widget_number, if (tip == null) View.GONE else View.VISIBLE)
         val intent = tipIntent(context, tip?.id)
@@ -75,7 +75,7 @@ class TipWidgetProvider : AppWidgetProvider() {
                 flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 if (tipId != null) {
                     action = Intent.ACTION_VIEW
-                    data = Uri.parse("cpptotw://tip/$tipId")
+                    data = "cpptotw://tip/$tipId".toUri()
                 }
             }
 
